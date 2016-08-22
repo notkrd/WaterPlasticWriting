@@ -11,28 +11,29 @@ for this, or known that we would someday need one, and wished to help."
 
 
 \begin{code}
+--Sets up Lexicons, to be kept in the state of "InAWorld" later
 
 module WhileLettingSomethingBeMadeTheSameAsSomethingSimple where
 
-import ISendAWarmThingBySpoonOverASlowOne
-
-import Data.Maybe
+import Data.List
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Map (Map)
+import qualified Data.Map.Lazy as Map
 
 \end{code}
 
-One of the lines i started writing out - a long time ago, 7 or 8 years ago, when i
-thought i had grown into sentences as i imagined certain others, on shelves or now
-and then in voices, had come to clothe themselves - those four or five sentences at
-a time which i would seek a syllable or synoynm at a time in the corners of used
-binder pages and now and then in this actually spat and muffled whisper, phrases
-which in fact were really not that different from any of the others - was "the
-dictionary of prayers is the dictionary, red-covered, thin-paged" and unlike the
-others i could not find a shelf that would explain or excuse it, and it does not
-(like the others, perhaps, do not) sound like poetry, or even, properly,
-explanation, but this is the sentence (its shadow "the dictionary of prayers is
-the dictionary, Merriam-Websters, thin-paged"). The others now are:
+One of the lines i started writing out - a long time ago, 7 or 8 years ago, when i thought i had grown into sentences as i imagined certain others, on shelves or now and then in voices, had come to clothe themselves - those four or five sentences at a time which i would seek a syllable or synoynm at a time in the corners of used binder pages and now and then in this actually spat and muffled whisper, phrases which in fact were really not that different from any of the others - was "the dictionary of prayers is the dictionary, red-covered, thin-paged" and unlike the others i could not find a shelf that would explain or excuse it, and it does not (like the others, perhaps, do not) sound like poetry, or even, properly, explanation, but this is the sentence (its shadow "the dictionary of prayers is the dictionary, Merriam-Websters, thin-paged").
+
+\begin{code}
+--type synonyms for Lexicons, used to track phrases used in a poem
+
+type Phrase = [String] --Type synonym used for parts of a poem
+type Lexicon = Map String (Set Phrase) --Associates keys with collections of phrases
+
+\end{code}
+
+The others now are:
 
 1. "They chattered at us from the drawers, in the languages of lost things"
 
@@ -50,96 +51,108 @@ Lacking better names for it, call it A Little Brown Thing."
 
 \begin{code}
 
-showDict :: [Phrase] -> String
-showDict dict = foldl (\other_wrds fst_wrd -> (showPhr fst_wrd) ++ ('\n' : other_wrds)) "" dict
+--Operations involving lexicons
 
-printDict :: [Phrase] -> IO ()
-printDict dict = putStrLn (showDict dict)
+phrase_of_kind :: String -> Phrase -> Lexicon -> Bool --Checks whether a key is associated with a phrase
+phrase_of_kind some_kind the_phrase the_lex = case key_lookup of
+  Nothing -> False
+  Just some_phrases -> Set.member the_phrase some_phrases
+ where
+   key_lookup = Map.lookup some_kind the_lex
 
-addToDict :: (Phrase -> Maybe Phrase) -> [Phrase] -> [Phrase]
-addToDict f dict = ((catMaybes . (map f)) dict) ++ dict
+lexicon_of :: String -> Lexicon -> Set Phrase --Returns the set of phrases with a given key
+lexicon_of some_kind a_lexicon = this_lexicon where
+  this_lexicon = case
+    (Map.lookup some_kind a_lexicon) of
+    Nothing -> Set.empty
+    Just entries -> entries
 
-phrasesOfLbls :: Set String -> [Phrase] -> [Phrase] -- filters phrases to specifications
-phrasesOfLbls some_kind all_phrases =
-  filter (\phr -> Set.isSubsetOf some_kind (labels (snd phr))) all_phrases
+of_kinds :: [String] -> Lexicon -> Set Phrase --Returns the phrases satisfying a list of keys. Empty on the empty list.
+of_kinds some_kinds a_lex =
+  foldl' Set.intersection all_phrases lexicons_for_kinds where
+  all_phrases = foldl' Set.union Set.empty lexicons_for_kinds
+  of_kind_in_a_lex = \a_kind -> lexicon_of a_kind a_lex 
+  lexicons_for_kinds = map of_kind_in_a_lex some_kinds
 
-newPhrases :: [Phrase] -> [Phrase] -- Finds all valid binary combinations
-newPhrases all_phrases =
-  filter (\phr -> (snd phr) /= NA && notElem phr all_phrases)
-         [phr1 @+@ phr2 | phr1 <- all_phrases, phr2 <- all_phrases]
+add_to_lexicon :: String -> Phrase -> Lexicon -> Lexicon --Inserts a labeled phrase to a lexicon
+add_to_lexicon a_key a_phrase =
+  Map.insertWith Set.union a_key just_phrase
+ where
+   just_phrase = Set.singleton a_phrase
 
-gensOfPhrases :: Integer -> [Phrase] -> [Phrase] -- Finds all valid n-ary combinations
-gensOfPhrases 0 all_phrases = all_phrases
-gensOfPhrases n all_phrases = gensOfPhrases (n - 1) (all_phrases ++ (newPhrases all_phrases))
+add_set_to_lexicon :: String -> Set Phrase -> Lexicon -> Lexicon --Inserts a labeled set of phrases to a lexicon
+add_set_to_lexicon a_key some_phrases =
+  Map.insertWith Set.union a_key some_phrases
 
-gensOfSentences :: Integer -> [Phrase] -> IO() -- Finds and shows all valid n-ary combinations
-gensOfSentences n all_phrases = printDict (phrasesOfLbls (Set.singleton "S")
-                                           (gensOfPhrases n all_phrases))
+remove_from_lexicon :: String -> Phrase -> Lexicon -> Lexicon --Deletes a labeled phrase from a lexicon
+remove_from_lexicon a_key a_phrase =
+  Map.adjust remove_the_phrase a_key
+ where
+   just_phrase = Set.singleton a_phrase
+   remove_the_phrase = (\phrases -> Set.difference phrases just_phrase)
 
---i want certain words to act differently on kind keywords: adding "the" to a noun
---should keep its cats. So, to specify this sort of behaviour, will write words
---like this as functions to map over a dictionary
+remove_set_from_lexicon :: String -> Set Phrase -> Lexicon -> Lexicon --Deletes a set of labeled phrase from a lexicon
+remove_set_from_lexicon a_key some_phrases =
+  Map.adjust remove_the_phrases a_key
+  where
+  remove_the_phrases = (\phrases ->  Set.difference phrases some_phrases) 
 
-the_noun :: Phrase -> Maybe Phrase
-the_noun (words, cat)
-  | n #% cat = Just ("the" : words, "definite" +@ ("N" -@ ((labels cat) +@@ np)))
-  | otherwise = Nothing
+all_phrases :: Lexicon -> Set Phrase -- Returns the union of all the phrases stored in a lexicon
+all_phrases a_lex = Set.unions (Map.elems a_lex)
 
-a_noun :: Phrase -> Maybe Phrase
-a_noun (words, cat)
-  | n #% cat = Just ("a" : words, "indefinite" +@ ("N" -@ ((labels cat) +@@ np)))
-  | otherwise = Nothing
-
-add_determiners :: [Phrase] -> [Phrase]
-add_determiners = (addToDict the_noun) . (addToDict a_noun) 
-
-\end{code}
-
-\begin{code}
-
-
-s, n, np, pp :: WordCat
-s = PrimitiveCat (Set.singleton "S"); n = PrimitiveCat (Set.singleton "N");
-np = PrimitiveCat (Set.singleton "NP"); pp = PrimitiveCat (Set.singleton "PP"); 
-
---well call them w_WORD to not forget that they're just words
-
-w_a, w_inscribes, w_is, w_Jane, w_map, w_road, w_the :: Phrase
-
-w_a = (["a"], np @/@ n)
-w_is = (["is"], s @\@ np)
-w_inscribes = (["inscribes"], (s @\@ np) @/@ np)
-w_Jane = (["Jane"], np)
-w_map = (["map"], n)
-w_road = (["road"], n)
-w_the = (["the"], np @/@ n)
+add_all_phrases :: Lexicon -> Lexicon --Adds all phrases stored in a lexicon under the key "PHRASE"
+add_all_phrases a_lex = Map.insert "PHRASE" many_phrases a_lex
+  where
+  many_phrases = all_phrases a_lex
 
 \end{code}
 
 \begin{code}
+--example lexicons
 
-some_words :: [Phrase]
-some_words = [w_Jane, w_road, w_map, w_is, w_inscribes, w_a, w_the,
-              (["map","to"], n @/@ np)]
+map_road_jane_lexicon :: Lexicon --An example lexicon
+map_road_jane_lexicon = Map.fromList [
+  ("Det", Set.fromList [["a"],["the"]]),
+  ("N", Set.fromList [["map"],["road"]]),
+  ("NP", Set.fromList [["Jane"]]),
+  ("VT", Set.fromList [["inscribes"],["is"]]),
+  ("P", Set.fromList [["to"]])]
 
-other_words :: [Phrase]
-other_words = [(["the"], np @/@ n),
-               (["some"], np @/@ n),
-               (["CEO"], n),
-               (["bird"], n),
-               (["and elsewhere"], (s @/@ s) @\@ s),
-               (["breathes"], s @\@ np),
-               (["flies"], s @\@ np)]
+other_words_lexicon :: Lexicon --Another example
+other_words_lexicon = Map.fromList [
+  ("Det", Set.fromList [["the"],["some"]]),
+  ("N", Set.fromList [["CEO"],["bird"]]),
+  ("VP", Set.fromList [["breathes"],["flies"]]),
+  ("Conj", Set.fromList [["and","elsewhere"]])]
 
-more_words :: [Phrase]
-more_words = [(["mouth"], n),
-              (["machine"], n),
-              (["meanings"], np),
-              (["this"], np @/@ n),
-              (["that"], np @/@ n),
-              (["watches"], (s @\@ np) @/@ np),
-              (["follows"], ((s @\@ np) @/@ pp) @/@ np),
-              (["into"], pp @/@ np)]
+more_words_lexicon :: Lexicon --Another example
+more_words_lexicon = Map.fromList [
+  ("Det", Set.fromList [["this"],["that"]]),
+  ("N", Set.fromList [["mouth"],["machine"]]),
+  ("VT", Set.fromList [["watches"],["follows"]]),
+  ("P", Set.fromList [["into"]])]
+
+lang_lexicon :: Lexicon --And another example
+lang_lexicon = Map.fromList [
+  ("N", Set.fromList [["word"],["inscription"],["language"],["speech"],["voice"],["text"],["page"]]),
+  ("VI", Set.fromList [["accumulate","speak","point","breathe","wail","open"]]),
+  ("VTI", Set.fromList [["outline","echo","scaffold","hold","oppose"]]),
+  ("Det", Set.fromList [["the","this","a"]])]
+
+\end{code}
+
+lang_nouns :: [String]
+lang_nouns = ["word", "inscription", "language", "speech", "voice", "text", "page"]
+
+lang_verb_intrans :: [String]
+lang_verb_intrans = ["accumulate", "speak", "point", "breathe", "wail", "open"]
+
+lang_verb_trans :: [String]
+lang_verb_trans = ["outline","echo","scaffold","hold","oppose"]
+
+lang_dets :: [String]
+lang_dets = ["the","this","a"]
+
 
 place, agent :: WordCat
 place = (+@) "place" n; agent = (+@) "agent" np;
@@ -169,4 +182,3 @@ city_words = [(["city"], ((+@) "vague" just_place)),
 all_words :: [Phrase]
 all_words = some_words ++ other_words ++ more_words ++ city_words
 
-\end{code}

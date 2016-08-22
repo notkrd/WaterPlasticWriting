@@ -6,8 +6,12 @@ The remains of the dead in the cemeteries, in unmarked graves and oceans."
 - Robert Pinsky, from "The Figured Wheel"
 
 \begin{code}
+--Describes how the State monad will be threaded through the program, as "InAWorld"
 
 module SayingThingsAsAnEngineWould where
+
+import WhileLettingSomethingBeMadeTheSameAsSomethingSimple
+import ISendAWarmThingBySpoonOverASlowOne
 
 import Control.Monad
 import Control.Monad.State.Lazy
@@ -40,29 +44,21 @@ random_element a_set g
 \begin{code}
 --Basic types that will be used with the State monad
 
-type Phrase = [String] --Type synonym used for parts of a poem
-type Lexicon = Map String (Set Phrase)
---Associates keys with collections of phrases
-type Flags = [String]
-type InAWorld = (Bool, Lexicon, StdGen, Flags) --Tracks current state
+type Flags = Set String --Flags poets may pass around, e.g. stating whether a poem has been completed
 
-poem_finished :: InAWorld -> Bool --A world's field for whether poem is complete
-poem_finished (completion_state,_,_,_) = completion_state
-
-update_completion :: Bool -> InAWorld -> InAWorld --Change completion, fix the rest
-update_completion c' (c,l,g,f) = (c',l,g,f)
+type InAWorld = (Lexicon, StdGen, Flags) --Tracks current state
 
 lexicon :: InAWorld -> Lexicon --A world's field for a current Lexicon (phrases used / known in the poem)
-lexicon (_,a_lexicon,_,_) = a_lexicon
+lexicon (a_lexicon,_,_) = a_lexicon
 
 update_lexicon :: Lexicon -> InAWorld -> InAWorld --Change lexicon, fix the rest
-update_lexicon l' (c,l,g,f) = (c,l',g,f)
+update_lexicon l' (l,g,f) = (l',g,f)
 
 mysterious_insight :: InAWorld -> StdGen --A world's Mysterious Force of Poetic Insight / random number generator
-mysterious_insight (_,_,generator,_) = generator
+mysterious_insight (_,generator,_) = generator
 
 update_insight :: StdGen -> InAWorld -> InAWorld --Change Mysterious Force of Poetic Insight, fix the rest
-update_insight g' (c,l,g,f) = (c,l,g',f)
+update_insight g' (l,g,f) = (l,g',f)
 
 increment_insight :: InAWorld -> InAWorld --Replace's world's generator with the next one
 increment_insight some_world = update_insight g' some_world where
@@ -70,36 +66,10 @@ increment_insight some_world = update_insight g' some_world where
   g' = snd (next g)
 
 raised_flags :: InAWorld -> Flags -- A world's active flags
-raised_flags (_,_,_,f) = f
+raised_flags (_,_,f) = f
 
 update_flags :: Flags -> InAWorld -> InAWorld -- Change flags, fix the rest
-update_flags f' (c,l,g,f) = (c,l,g,f')
-
-\end{code}
-
-\begin{code}
---Operations involving lexicons
-
-phrase_of_kind :: Phrase -> String -> Lexicon -> Bool --Checks whether a key is associated with a phrase
-phrase_of_kind the_phrase some_kind the_lex = case key_lookup of
-  Nothing -> False
-  Just some_phrases -> Set.member the_phrase some_phrases
- where
-   key_lookup = Map.lookup some_kind the_lex
-
---returns the set of phrases with a given key
-lexicon_of :: String -> Lexicon -> Set Phrase
-lexicon_of some_kind a_lexicon = this_lexicon where
-  this_lexicon = case
-    (Map.lookup some_kind a_lexicon) of
-    Nothing -> Set.empty
-    Just entries -> entries
-
-add_to_lexicon :: String -> Phrase -> Lexicon -> Lexicon
-add_to_lexicon a_key a_phrase =
-  Map.insertWith Set.union a_key just_phrase
- where
-   just_phrase = Set.singleton a_phrase
+update_flags f' (l,g,f) = (l,g,f')
 
 \end{code}
 
@@ -135,27 +105,19 @@ I would like some other kind of explanation, that doesn't actualy describe the e
 
 \begin{code}
 
-map_road_jane_lexicon :: Lexicon
-map_road_jane_lexicon = Map.fromList [("DET", Set.fromList [["a"],["the"]]),
-               ("N", Set.fromList [["map"],["road"]]),
-               ("NP", Set.fromList [["Jane"]]),
-               ("VP", Set.fromList [["is"]]),
-               ("VT", Set.fromList [["inscribes"]]),
-               ("P", Set.fromList [["to"]])]
+map_road_jane_world :: InAWorld --An example world
+map_road_jane_world = (map_road_jane_lexicon, mkStdGen 0, Set.empty)
 
-map_road_jane_world :: InAWorld
-map_road_jane_world = (True, map_road_jane_lexicon, mkStdGen 0, [])
-
-many_worlds :: InAWorld -> Int -> InAWorld
+many_worlds :: InAWorld -> Int -> InAWorld --Provides indexed worlds with incrementing generators
 many_worlds a_world n
   | n == 0 = a_world
   | n > 0 = increment_insight (many_worlds a_world (n - 1))
   | otherwise = a_world
 
-many_maps :: Int -> InAWorld
+many_maps :: Int -> InAWorld --Our example world under varying generators
 many_maps = many_worlds map_road_jane_world
 
-say_phrase :: String -> Phrase -> Poet
+say_phrase :: String -> Phrase -> Poet 
 say_phrase a_key something = \poem ->
   do
     old_world <- get
