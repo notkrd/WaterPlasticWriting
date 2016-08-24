@@ -12,8 +12,14 @@ module EachGetsAnOrangeFromAHat where
 
 import SayingThingsAsAnEngineWould
 import WhileLettingSomethingBeMadeTheSameAsSomethingSimple
+import ISendAWarmThingBySpoonOverASlowOne
 
 import Data.List
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Control.Monad.State.Lazy
 
 \end{code}
 
@@ -29,11 +35,14 @@ apply_if_worked some_str (Just the_remainder) = (True, the_remainder)
 \begin{code}
 --LSystem related types and functions
 
-type LRule = (Phrase, Phrase) --A rewriting rule of the form (_PHRASE_,_REWRITTEN-PHRASE_) where _PHRASE_ should be non-empty.
+-- A rewriting rule of the form (_PHRASE_,_REWRITTEN-PHRASE_) where _PHRASE_ should be non-empty.
+type LRule = (Phrase, Phrase) 
 
-type LWriter = [LRule] --A collection of rewriting rules. Rules will be attempted in left to right order
+-- A collection of rewriting rules. Rules will be attempted in left to right order
+type LWriter = [LRule] 
 
-apply_l_writer :: LWriter -> Phrase -> (Phrase, Phrase) --Applies first valid rule in an Lsystem, returning rewritten phrase and remaining tokens. If none are valid, returns (_FIRST_,_REST_)
+-- Applies first valid rule in an Lsystem, returning rewritten phrase and remaining tokens. If none are valid, returns (_FIRST_,_REST_)
+apply_l_writer :: LWriter -> Phrase -> (Phrase, Phrase) 
 apply_l_writer _ [] = ([],[])
 apply_l_writer l_writer a_phrase = case try_rules of
   Nothing -> ([head a_phrase], tail a_phrase)
@@ -42,6 +51,7 @@ apply_l_writer l_writer a_phrase = case try_rules of
     l_rule_works = \a_phrase a_rule -> isPrefixOf (fst a_rule) a_phrase
     try_rules = find (l_rule_works a_phrase) l_writer
 
+-- Rewrites a phrase given the rules in some l_writer
 rewrite_with_l_writer :: LWriter -> Phrase -> Phrase
 rewrite_with_l_writer  _ [] = []
 rewrite_with_l_writer l_writer a_phrase = rewritten_start ++ rewritten_rest
@@ -50,36 +60,52 @@ rewrite_with_l_writer l_writer a_phrase = rewritten_start ++ rewritten_rest
     rewritten_start = fst next_application
     rewritten_rest = rewrite_with_l_writer l_writer (snd next_application)
 
+-- Gives the phrase corresponding to a given l_writer. Note that it does /not/ bother at all with lexicons - if you want your L-System to be integrated with the grammar, you will have to deal with that manually
 l_poet :: LWriter -> Poet
 l_poet l_writer = (\a_phrase -> return (rewrite_with_l_writer l_writer a_phrase))
+
+-- Updates lexicon with an L-System. The L-System here should preserve grammatical categories. 
+l_write_on_lexicon :: LWriter -> State InAWorld ()
+l_write_on_lexicon an_l_writer = do
+  current_lexicon <- get_lexicon
+  let l_rewritten_lex = Map.map (Set.map (rewrite_with_l_writer an_l_writer)) current_lexicon
+  let updated_lex = Map.unionWith Set.union current_lexicon l_rewritten_lex
+  change_lexicon updated_lex
+
+l_against_syntax :: LWriter -> Poet
+l_against_syntax an_l_writer = \current_text -> do
+  l_write_on_lexicon an_l_writer
+  possible_sentence <- random_phrase_of_cats (Set.singleton "S")
+  case possible_sentence of
+    Nothing -> return current_text
+    Just a_sentence ->
+      return current_text >>= say_phrase a_sentence >>= add_with_poet (l_poet an_l_writer) 
 
 \end{code}
 
 \begin{code}
 --Several example L-system texts:
 
-writeGrowthOf :: Int -> Phrase -> LWriter -> String --Later, we will want to do this sort of stuff through the monad, but for now we can interact with Lsystem texts in this way
-writeGrowthOf n a_start an_l_writer
-  | n == 0 = concat (intersperse " " a_start)
-  | n > 0 = (concat (intersperse " " a_start) ++
-    ('\n' : '\n' : (writeGrowthOf (n - 1) next_phrase an_l_writer)))
-  where
-    next_phrase = rewrite_with_l_writer an_l_writer a_start
+now_grass_alleys :: Phrase
+now_grass_alleys = ["now","grass","alleys"]
 
-doStuff :: Int -> Phrase -> LWriter -> IO () --prints a system over a given number of rewrites, starting with a given phrase
-doStuff n some_start some_system =
-  putStrLn ('\n' : (writeGrowthOf n some_start some_system))
+this_ground :: Lexicon
+this_ground = lexicon_from_phrases [
+  (["N","plural","setting"],["alleys"]),
+  (["NP","N","non-countable","setting"],["grass"]),
+  (["Adv","NP","time","abstract"],["now"])]
 
-langStuff :: IO ()
-langStuff = doStuff 10 lang_starts wordsMakeWords
+an_idea_of_veining :: LWriter
+an_idea_of_veining = []
 
-sentenceStuff = doStuff 7 sentence_starts sentence_grows
+wrong_sidewalks :: YourGrammar
+wrong_sidewalks = empty_grammar
 
 lang_starts :: Phrase
 lang_starts = ["language","starts"]
 
-wordsMakeWords :: LWriter
-wordsMakeWords = [
+words_make_words :: LWriter
+words_make_words = [
   (["in","an","old","house","i","have","forgotten","now"],["language"]),
   (["something","now","in","an"],["breath","in","an"]),
   (["starts","somewhere"], ["starts","now","somewhere","in","something"]),
