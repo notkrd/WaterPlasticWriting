@@ -132,8 +132,7 @@ change_insight g' = do
   (l,g,f,r) <- get
   put (l,g',f,r)
 
--- Lexicon_of on a world's lexicon - returns set of phrases matching a key
-lexicon_ofW :: String -> State InAWorld (Set Phrase) 
+lexicon_ofW :: String -> State InAWorld (Set Phrase) -- Lexicon_of on a world's lexicon - returns set of phrases matching a key
 lexicon_ofW key = do
   a_world <- get
   return (lexicon_of key (lexicon a_world))
@@ -144,8 +143,7 @@ of_setW some_kinds = do
   let this_lexicon = lexicon this_world
   return (of_set some_kinds this_lexicon)
 
--- Uses (and updates) a world's random number generator to pick a random element of a set
-get_random_element :: Set a -> State InAWorld (Maybe a)
+get_random_element :: Set a -> State InAWorld (Maybe a) -- Uses (and updates) a world's random number generator to pick a random element of a set
 get_random_element a_set = do
   current_world <- get
   let g = mysterious_insight current_world
@@ -153,8 +151,12 @@ get_random_element a_set = do
   change_insight g'
   return a_possible_element
 
--- Adds a phrase to a world's lexicon
-learn_phrase :: String -> Phrase -> State InAWorld ()
+phrase_is_of_cats :: Set String -> Phrase -> State InAWorld Bool
+phrase_is_of_cats some_kinds some_phrase = do
+  acceptable_phrases <- of_setW some_kinds
+  return (Set.member some_phrase acceptable_phrases)
+
+learn_phrase :: String -> Phrase -> State InAWorld () -- Adds a phrase to a world's lexicon
 learn_phrase a_key a_phrase = do
   old_world <- get
   let old_lexicon = lexicon old_world
@@ -204,49 +206,95 @@ make_phrase_of_cats some_kinds = do
     Nothing -> return Nothing
     Just some_rule -> phrase_of_rule some_rule
 
+--Makes a phrase, if possible via a production rule, in /every/ category currently used.
+make_phrase_for_each_rule :: State InAWorld ([Maybe Phrase])
+make_phrase_for_each_rule = do
+  current_grammar <- get_your_grammar
+  let grammar_list = Set.toList current_grammar
+  mapM phrase_of_rule (grammar_list)
+
 \end{code}
 
 \begin{code}
--- Type and functions for poets, functions that generate and modify text
+-- Type and functions for language_games, functions that generate and modify text
 
--- The poet type, for a function that modifies a text using state
-type Poet = Phrase -> State InAWorld Phrase
+-- The language_game type, for a function that modifies a text using state
+type LanguageGame = Phrase -> State InAWorld Phrase
 
--- A poet who might fail
-type UnreliablePoet = Phrase -> State InAWorld (Maybe Phrase)
+-- A language_game who might fail
+type Poet = Phrase -> State InAWorld (Maybe Phrase)
 
 -- Insert a phrase, leave the lexicon alone
-say_phrase :: Phrase -> Poet
+say_phrase :: Phrase -> LanguageGame
 say_phrase something = \poem -> return (poem ++ something)
 
 -- Add a phrase to a text and insert it into the lexicon, if it isn't already present
-add_phrase :: String -> Phrase -> Poet 
+add_phrase :: String -> Phrase -> LanguageGame 
 add_phrase a_key something = \poem ->
   do
     learn_phrase a_key something
     return (poem ++ something)
 
 -- Applies an unreliable poet, or on failure, returns what is passed on (though potentially altering state in their attempt)
-give_chance :: UnreliablePoet -> Poet
-give_chance some_poet = \start_phrase -> do
-  their_attempt <- some_poet start_phrase
+give_chance :: Poet -> LanguageGame
+give_chance some_language_game = \start_phrase -> do
+  their_attempt <- some_language_game start_phrase
   case their_attempt of
     Nothing -> return start_phrase
     Just some_creation -> return some_creation
 
--- The poet that adds the contribution of another poet to the end of a text
-add_with_poet :: Poet -> Poet
-add_with_poet some_poet = \current_text -> do
-  phrase_of_poet <- some_poet current_text
-  say_phrase phrase_of_poet current_text
+keep_trying :: Poet -> LanguageGame -- Keep attempting a poet until it works. Great risk of looping
+keep_trying some_poet = \some_start -> do
+  their_attempt <- some_poet some_start
+  case their_attempt of
+    Nothing -> keep_trying some_poet some_start
+    Just some_success -> return some_success
+
+-- The language_game that adds the contribution of another language_game to the end of a text
+add_with_language_game :: LanguageGame -> LanguageGame
+add_with_language_game some_language_game = \current_text -> do
+  phrase_of_game <- some_language_game current_text
+  say_phrase phrase_of_game current_text
 
 -- Attempts to add an unreliable poet's contribution to a text
-try_to_add :: UnreliablePoet -> Poet
-try_to_add some_poet = \current_text -> do
+try_to_use :: Poet -> LanguageGame
+try_to_use some_poet = \current_text -> do
   their_attempt <- some_poet current_text
   case their_attempt of
     Nothing -> return current_text
     Just some_creation -> say_phrase some_creation current_text
+
+phrase_maker :: LanguageGame
+phrase_maker any_phrase = do
+  dont_care <- make_phrase_for_each_rule
+  return any_phrase
+
+poet_of_cats :: Set String -> Poet
+poet_of_cats some_kinds = \_ -> make_phrase_of_cats some_kinds
+
+poet_of_sentences :: Poet
+poet_of_sentences = \a_text -> phrase_maker a_text >>=
+                               (poet_of_cats (Set.singleton "S"))
+
+say_new_sentence :: Poet --Performance seems really terrible
+say_new_sentence some_start = do
+  potential_sentence <- poet_of_sentences some_start
+  case potential_sentence of
+    Nothing -> return Nothing
+    Just some_sentence -> do
+      sentence_used <- phrase_is_of_cats (Set.singleton "USED") some_sentence
+      if sentence_used
+         then return Nothing
+         else do
+                learn_phrase "USED" some_sentence
+                return (Just (some_start ++ ("\n" : some_sentence)))
+
+say_sentence :: Poet --Performance seems terrible
+say_sentence some_start = do
+  potential_sentence <- poet_of_sentences some_start
+  case potential_sentence of
+    Nothing -> return Nothing
+    Just some_sentence -> return (Just (some_start ++ ("\n" : some_sentence)))
 
 \end{code}
 

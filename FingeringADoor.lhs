@@ -98,13 +98,21 @@ h_compare_worlds h world_a world_b = do
   hPrint h (Map.differenceWith compare_sets lexicon_b lexicon_a)
   hPrint h (Set.difference grammar_b grammar_a)
 
-h_exponentiate_poet :: Handle -> Int -> Poet -> Phrase -> InAWorld -> IO () --Applies a poet n times, writing each phrase along the way
-h_exponentiate_poet h n a_poet start_phrase some_world
+h_repeat_game :: Handle -> Int -> LanguageGame -> Phrase -> InAWorld -> IO () -- Returns the nth result of a language game
+h_repeat_game h n a_game start_phrase some_world
+  | n == 0 = hPutStrLn h (phrase_string start_phrase)
+  | n > 0 = do
+      let (new_phrase, new_world) = runState (a_game start_phrase) some_world
+      h_repeat_game h (n - 1) a_game new_phrase new_world
+  | otherwise = return ()
+
+h_over_many_games :: Handle -> Int -> LanguageGame -> Phrase -> InAWorld -> IO () -- Plays a language game n times, writing each phrase along the way
+h_over_many_games h n a_game start_phrase some_world
   | n == 0 = hPutStrLn h ('\n' : (phrase_string start_phrase))
   | n > 0 = do
       hPutStrLn h ('\n' : (phrase_string start_phrase))
-      let (new_phrase, new_world) = runState (a_poet start_phrase) some_world
-      h_exponentiate_poet h (n - 1) a_poet new_phrase new_world
+      let (new_phrase, new_world) = runState (a_game start_phrase) some_world
+      h_over_many_games h (n - 1) a_game new_phrase new_world
   | otherwise = return ()
   
 \end{code}
@@ -127,17 +135,23 @@ print_updated_sentences = h_print_updated_sentences stdout
 compare_worlds :: InAWorld -> InAWorld -> IO ()
 compare_worlds = h_compare_worlds stdout
 
-exponentiate_poet :: Int -> Poet -> Phrase -> InAWorld -> IO ()
-exponentiate_poet = h_exponentiate_poet stdout
+over_many_games :: Int -> LanguageGame -> Phrase -> InAWorld -> IO ()
+over_many_games = h_over_many_games stdout
+
+repeat_game :: Int -> LanguageGame -> Phrase -> InAWorld -> IO ()
+repeat_game = h_repeat_game stdout
 
 \end{code}
 
 \begin{code}
 
-langStuff :: IO () -- Writes 10 generations of the L-System words_make_words in the module EachGetsAnOrangeFromAHat
-langStuff = exponentiate_poet 10 (l_poet words_make_words) lang_starts empty_world
+lang_stuff :: IO () -- Writes 10 generations of the L-System words_make_words in the module EachGetsAnOrangeFromAHat
+lang_stuff = over_many_games 10 (l_game words_make_words) lang_starts empty_world
 
-sentenceStuff :: IO () -- Another example from EachGetsAnOrangeFromAHat
-sentenceStuff = exponentiate_poet 7 (l_poet sentence_grows) sentence_starts empty_world
+sentence_stuff :: IO () -- Another example from EachGetsAnOrangeFromAHat
+sentence_stuff = over_many_games 7 (l_game sentence_grows) sentence_starts empty_world
+
+world_sentences :: InAWorld -> IO()
+world_sentences some_world = repeat_game 20 (keep_trying say_new_sentence) [] some_world
 
 \end{code}
