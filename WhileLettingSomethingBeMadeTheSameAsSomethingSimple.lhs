@@ -74,11 +74,24 @@ of_kinds some_kinds a_lex =
   of_kind_in_a_lex = \a_kind -> lexicon_of a_kind a_lex 
   lexicons_for_kinds = map of_kind_in_a_lex some_kinds
 
+of_set :: Set String -> Lexicon -> Set Phrase --Returns the phrases satisfying a list of keys. Empty on the empty list.
+of_set some_kinds a_lex =
+  Set.foldl' Set.intersection all_phrases lexicons_for_kinds where
+  all_phrases = Set.foldl' Set.union Set.empty lexicons_for_kinds
+  of_kind_in_a_lex = \a_kind -> lexicon_of a_kind a_lex 
+  lexicons_for_kinds = Set.map of_kind_in_a_lex some_kinds
+
 add_to_lexicon :: String -> Phrase -> Lexicon -> Lexicon --Inserts a labeled phrase to a lexicon
 add_to_lexicon a_key a_phrase =
   Map.insertWith Set.union a_key just_phrase
  where
    just_phrase = Set.singleton a_phrase
+
+add_to_lexicon_of_kinds :: [String] -> Phrase -> Lexicon -> Lexicon --Add a phrase into a lexicon for all keys listed
+add_to_lexicon_of_kinds keys a_phrase a_lexicon  =
+  foldl' update_lex a_lexicon keys
+ where
+   update_lex = \curr_lex a_key -> add_to_lexicon a_key a_phrase curr_lex
 
 add_set_to_lexicon :: String -> Set Phrase -> Lexicon -> Lexicon --Inserts a labeled set of phrases to a lexicon
 add_set_to_lexicon a_key some_phrases =
@@ -105,13 +118,20 @@ add_all_phrases a_lex = Map.insert "PHRASE" many_phrases a_lex
   where
   many_phrases = all_phrases a_lex
 
+lexicon_from_phrases :: [([String], Phrase)] -> Lexicon
+lexicon_from_phrases [] = Map.empty
+lexicon_from_phrases ((first_kinds, first_phrase) : other_entries) =
+  add_to_lexicon_of_kinds first_kinds first_phrase rest_of_lexicon
+  where
+    rest_of_lexicon = lexicon_from_phrases other_entries
+
 \end{code}
 
 \begin{code}
 --example lexicons
 
-map_road_jane_lexicon :: Lexicon --An example lexicon
-map_road_jane_lexicon = Map.fromList [
+map_lexicon :: Lexicon --An example lexicon
+map_lexicon = Map.fromList [
   ("Det", Set.fromList [["a"],["the"]]),
   ("N", Set.fromList [["map"],["road"]]),
   ("NP", Set.fromList [["Jane"]]),
@@ -139,24 +159,24 @@ lang_lexicon = Map.fromList [
   ("VTI", Set.fromList [["outline","echo","scaffold","hold","oppose"]]),
   ("Det", Set.fromList [["the","this","a"]])]
 
+city_words :: Lexicon --Here's another. This one allows the use of constraints
+city_words = lexicon_from_phrases [
+  (["N","vague","place"],["city"]),
+  (["NP","inhabitant"],["bakeries"]),
+  (["NP","inhabitant"],["pet","cats"]),
+  (["A","for place"],["living"]),
+  (["A","for place"],["dead"]),
+  (["Det"],["the"]),
+  (["VT","travel","vague"],["walks"]),
+  (["VT","description"],["surrounds"]),
+  (["Adv","mode"],["mechanically"]),
+  (["Conj","join"],["and"]),
+  (["P","possession","for inhabitant"],["with","its"]),
+  (["P","target","for place","for travel"],["into"]),
+  (["P","mode","for place","for travel"],["through"]),
+  (["NP","agent"],["Quinn"])]
+
 \end{code}
-
-lang_nouns :: [String]
-lang_nouns = ["word", "inscription", "language", "speech", "voice", "text", "page"]
-
-lang_verb_intrans :: [String]
-lang_verb_intrans = ["accumulate", "speak", "point", "breathe", "wail", "open"]
-
-lang_verb_trans :: [String]
-lang_verb_trans = ["outline","echo","scaffold","hold","oppose"]
-
-lang_dets :: [String]
-lang_dets = ["the","this","a"]
-
-
-place, agent :: WordCat
-place = (+@) "place" n; agent = (+@) "agent" np;
-just_place = (+@) "just place" place
 
 city_words :: [Phrase]
 city_words = [(["city"], ((+@) "vague" just_place)),
