@@ -45,6 +45,20 @@ random_element a_set g
 
 \end{code}
 
+random_element_fancy :: [Set a] -> StdGen -> (Maybe a, StdGen)
+random_element_fancy [] g = (Nothing, g)
+random_element_fancy (a_first : a_rest)
+  | random_index == 0 && first_size == 1 = Set.elemAt 0 a_first
+  | random_index < first_size = random_element_fancy (Set.splitRoot a_first) g'
+  | otherwise = random_element_fancy a_rest
+  where
+    first_size = Set.size a_first
+    total_size = foldl (\curr_size curr_set ->
+                         curr_size + (Set.size curr_set)) 0 (a_first : a_rest)
+    (random_index, g') = randomR (0, total_size - 1) g
+
+
+
 \begin{code}
 -- Basic types that will be used with the State monad
 
@@ -127,10 +141,19 @@ change_lexicon l' = do
   (l,g,f,r) <- get
   put (l',g,f,r)
 
+change_grammar :: YourGrammar -> State InAWorld ()
+change_grammar r' = do
+  (l,g,f,r) <- get
+  put (l,g,f,r')
+
 change_insight :: StdGen -> State InAWorld ()
 change_insight g' = do
   (l,g,f,r) <- get
   put (l,g',f,r)
+
+update_lexicon_cat :: String -> Set Phrase -> State InAWorld ()
+update_lexicon_cat some_cat new_entries = get_lexicon >>=
+  (\start_lex -> change_lexicon (Map.insert some_cat new_entries start_lex))
 
 lexicon_ofW :: String -> State InAWorld (Set Phrase) -- Lexicon_of on a world's lexicon - returns set of phrases matching a key
 lexicon_ofW key = do
@@ -143,7 +166,8 @@ of_setW some_kinds = do
   let this_lexicon = lexicon this_world
   return (of_set some_kinds this_lexicon)
 
-get_random_element :: Set a -> State InAWorld (Maybe a) -- Uses (and updates) a world's random number generator to pick a random element of a set
+-- Uses (and updates) a world's random number generator to pick a random element of a set
+get_random_element :: Set a -> State InAWorld (Maybe a) 
 get_random_element a_set = do
   current_world <- get
   let g = mysterious_insight current_world
@@ -156,7 +180,14 @@ phrase_is_of_cats some_kinds some_phrase = do
   acceptable_phrases <- of_setW some_kinds
   return (Set.member some_phrase acceptable_phrases)
 
-learn_phrase :: String -> Phrase -> State InAWorld () -- Adds a phrase to a world's lexicon
+-- Adds a rule to a world's grammar
+learn_rule :: ChomskyRule -> State InAWorld()
+learn_rule some_rule = get_your_grammar >>= (add_some_rule some_rule)
+  where
+    add_some_rule = \some_rule some_grammar -> change_grammar (Set.insert some_rule some_grammar)
+
+-- Adds a phrase to a world's lexicon
+learn_phrase :: String -> Phrase -> State InAWorld () 
 learn_phrase a_key a_phrase = do
   old_world <- get
   let old_lexicon = lexicon old_world
@@ -167,6 +198,14 @@ learn_phrase a_key a_phrase = do
 learn_phrase_kinds :: Set String -> Phrase -> State InAWorld ()
 learn_phrase_kinds keys a_phrase = do
   mapM_ (\a_key -> learn_phrase a_key a_phrase) (Set.toList keys)
+
+-- Updates the lexicon according to the grammar
+update_lexicon_grammatically :: State InAWorld ()
+update_lexicon_grammatically = do
+  some_grammar <- get_your_grammar
+  some_lexicon <- get_lexicon
+  change_lexicon (update_lexicon_with_rules some_grammar some_lexicon)
+  
 
 -- Select a random rule that produces phrases of all the given keys, if it exists
 random_rule_for :: Set String -> State InAWorld (Maybe ChomskyRule)
@@ -213,6 +252,9 @@ make_phrase_for_each_rule = do
   let grammar_list = Set.toList current_grammar
   mapM phrase_of_rule (grammar_list)
 
+just_make_phrase_for_each_rule :: State InAWorld ()
+just_make_phrase_for_each_rule = make_phrase_for_each_rule >> return ()
+
 \end{code}
 
 \begin{code}
@@ -224,16 +266,42 @@ type LanguageGame = Phrase -> State InAWorld Phrase
 -- A language_game who might fail
 type Poet = Phrase -> State InAWorld (Maybe Phrase)
 
+-- Do nothing
+no_game :: LanguageGame
+no_game = return
+
+hidden_game :: State InAWorld () -> LanguageGame
+hidden_game an_action = \a_text -> an_action >> return a_text
+
 -- Insert a phrase, leave the lexicon alone
 say_phrase :: Phrase -> LanguageGame
 say_phrase something = \poem -> return (poem ++ something)
 
+-- Insert a phrase on a new line
+say_line :: Phrase -> LanguageGame
+say_line something = \poem -> return (poem ++ ("\n" : something))
+
+say_lines :: [Phrase] -> LanguageGame
+say_lines [] = \a_text -> return a_text
+say_lines (first_line : other_lines) = \a_text ->
+  say_line first_line a_text >>= say_lines other_lines
+
+-- Prints all phrases of kinds
+say_of_kinds :: Set String -> LanguageGame
+say_of_kinds some_kinds = \a_text ->
+  of_setW some_kinds >>= \some_things -> say_lines (Set.toList some_things) a_text
+
 -- Add a phrase to a text and insert it into the lexicon, if it isn't already present
 add_phrase :: String -> Phrase -> LanguageGame 
-add_phrase a_key something = \poem ->
-  do
+add_phrase a_key something = \poem -> do
     learn_phrase a_key something
     return (poem ++ something)
+
+play_n_games :: Int -> LanguageGame -> LanguageGame
+play_n_games n a_game
+ | n == 0 = no_game
+ | n > 0 = \a_phrase -> foldl' (\partial_result _ -> partial_result >>= a_game) (return a_phrase) [1 .. n]
+ | otherwise = no_game
 
 -- Applies an unreliable poet, or on failure, returns what is passed on (though potentially altering state in their attempt)
 give_chance :: Poet -> LanguageGame
@@ -262,12 +330,10 @@ try_to_use some_poet = \current_text -> do
   their_attempt <- some_poet current_text
   case their_attempt of
     Nothing -> return current_text
-    Just some_creation -> say_phrase some_creation current_text
+    Just some_creation -> say_line some_creation current_text
 
 phrase_maker :: LanguageGame
-phrase_maker any_phrase = do
-  dont_care <- make_phrase_for_each_rule
-  return any_phrase
+phrase_maker any_phrase = make_phrase_for_each_rule >> return any_phrase
 
 poet_of_cats :: Set String -> Poet
 poet_of_cats some_kinds = \_ -> make_phrase_of_cats some_kinds
@@ -298,6 +364,8 @@ say_sentence some_start = do
 
 \end{code}
 
+And in this which of all possible worlds (the linguist quantifies over; "in all possible worlds the dead dog can't bark")
+
 \begin{code}
 -- Some examples
 
@@ -313,11 +381,68 @@ map_world = (map_lexicon, mkStdGen 0, Set.empty, map_grammar)
 city_world :: InAWorld 
 city_world = (city_words, mkStdGen 42, Set.empty, city_grammar)
 
+-- Another example world, more intricate
+ground_world :: InAWorld
+ground_world = (this_ground, mkStdGen 1729, Set.empty, wrong_sidewalks)
+
 -- Provides indexed worlds with incrementing generators
 many_worlds :: InAWorld -> Int -> InAWorld 
 many_worlds a_world n
   | n == 0 = a_world
   | n > 0 = increment_insight (many_worlds a_world (n - 1))
   | otherwise = a_world
+
+\end{code}
+
+\begin{code}
+
+use_contaminant :: Maybe (Set String, Phrase) -> State InAWorld ()
+use_contaminant Nothing = return ()
+use_contaminant (Just (some_kinds, some_phrase)) = learn_phrase_kinds some_kinds some_phrase
+
+rule_disturbance :: Maybe ChomskyRule -> State InAWorld ()
+rule_disturbance Nothing = return ()
+rule_disturbance (Just some_rule) = learn_rule some_rule
+
+contaminate_from :: Set (Set String, Phrase) -> State InAWorld ()
+contaminate_from some_contaminants = (get_random_element some_contaminants) >>= use_contaminant
+
+disturb_grammar :: YourGrammar -> State InAWorld ()
+disturb_grammar some_rules = (get_random_element some_rules) >>= rule_disturbance
+
+-- Response for aDLA week 2 Fall 2016
+art_language_ignore  :: InAWorld
+art_language_ignore = (language_before_art, mkStdGen 202, Set.empty, linguistic_arts)
+
+contaminate_say :: Set (Set String, Phrase) -> LanguageGame
+contaminate_say some_contaminants = \a_text ->
+  hidden_game (contaminate_from some_contaminants) a_text >>=
+  give_chance say_new_sentence
+
+tell_us_now :: LanguageGame
+tell_us_now = \a_text ->
+  say_of_kinds (Set.singleton "S") a_text >>=
+  say_phrase ["\n"] >>=
+  hidden_game update_lexicon_grammatically >>=
+  play_n_games 10 (give_chance say_new_sentence) >>=
+  say_phrase ["\n"] >>=
+  play_n_games 10 (contaminate_say linguistic_contaminants) >>=
+  say_phrase ["\n"] >>=
+  hidden_game update_lexicon_grammatically >>=
+  play_n_games 25 (\sub_text ->
+                    hidden_game (contaminate_from linguistic_contaminants) sub_text >>=
+                    hidden_game (disturb_grammar other_linguistics)  >>=
+                    hidden_game just_make_phrase_for_each_rule) >>=
+  say_phrase ["\n"] >>=
+  play_n_games 10 (contaminate_say linguistic_parasites) >>=
+  play_n_games 25 (hidden_game just_make_phrase_for_each_rule) >>=
+  say_phrase ["\n"] >>=
+  play_n_games 15 (contaminate_say linguistic_parasites) >>=
+  say_phrase ["\n"] >>=
+  play_n_games 25 (\sub_text ->
+                    hidden_game (contaminate_from linguistic_contaminants) sub_text >>=
+                    hidden_game (disturb_grammar other_linguistics)  >>=
+                    hidden_game just_make_phrase_for_each_rule) >>=
+  play_n_games 25 (give_chance say_new_sentence)
 
 \end{code}

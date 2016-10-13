@@ -125,7 +125,19 @@ lexicon_from_phrases ((first_kinds, first_phrase) : other_entries) =
   where
     rest_of_lexicon = lexicon_from_phrases other_entries
 
+lexicon_from_kinds :: [([String], [Phrase])] -> Lexicon
+lexicon_from_kinds lex_sections = foldl' add_pair empty_lexicon all_pairs
+  where
+    make_pairs = \a_section -> [(a_key, a_phrase) | a_key <- (fst a_section), a_phrase <- (snd a_section)]
+    all_pairs = (concat . map make_pairs) lex_sections
+    add_pair = \a_lex a_key_value -> add_to_lexicon (fst a_key_value) (snd a_key_value) a_lex
+
+empty_lexicon :: Lexicon
+empty_lexicon = Map.empty
+
 \end{code}
+
+i admit that i am interested in poetry as a kind of jigsaw or excavation, and as such, to read this, you'll have to keep at it. Thus, i would ask you (though not in this "ask" but in the attempt to craft, as i have remembered it, significance or affect) to keep at it. But if you don't, i mean, there're better jigsaws out there.
 
 \begin{code}
 --example lexicons
@@ -176,29 +188,182 @@ city_words = lexicon_from_phrases [
   (["P","mode","for place","for travel"],["through"]),
   (["NP","agent"],["Quinn"])]
 
+-- To test lexicon_from_kinds
+babbling :: Lexicon
+babbling = lexicon_from_kinds [
+  (["N","Sng","object"],[
+      ["stick"],["pen"],["kumquat"]]),
+  (["N","Sng","agent"],[
+      ["bird"],["CTO"]]),
+  (["DET","Sng"],[
+      ["the"],["a"]]),
+  (["DET","Sng","locating"],[
+      ["this"],["that"]]),
+  (["VP","3rd Plr"],[
+      ["babbles"]]),
+  (["VP","1st Sng"],[
+      ["babble"]])
+  ]
+
+-- A lexicon for ground_world
+this_ground :: Lexicon
+this_ground = lexicon_from_kinds [
+  ([""],[[""]]),
+  ([",","PUNC"],[[","]]),
+  (["DET","SING","PLUR"],[["the"]]),
+  (["NP","1st SING","SUBJ","agent"],[
+      ["i"]]),
+  (["NP","1st SING","OBJ","agent"],[
+      ["me"]]),
+  (["NP","1st SING","OBJ","agent","reflexive"],[
+      ["myself"]]),
+  (["N","size"],[
+      ["length"]]),
+  (["N","SING","place"],[
+      ["city"],["maze"],["grass"]]),
+  (["N","PLUR","place"],[
+      ["alleys","currents"]]),
+  (["VT","1st SING","PRES","identity"],[
+      ["am"]]),
+  (["VT","1st PLUR","2nd","3rd PLUR","PRES","identity"],[
+      ["are"]]),
+  (["VT","1st SING","1st PLUR","2nd","3rd PLUR","action"],[
+      ["feel"],["hear"]]),
+  (["VT","3rd SING","action"],[
+      ["hears"]]),
+  (["VT","3rd SING","PRES","identity"],[
+      ["is"]]),
+  (["DET","1st SING","possession"],[
+      ["my"]]),
+  (["DET","2nd SING","possession"],[
+      ["your"]]),
+  (["DET","for 3rd SING","for 3rd PLUR","3rd SING"],[
+      ["the"]]),
+  (["DET","for 3rd SING","locating","3rd SING"],[
+      ["that","this"]]),
+  (["DET","for 3rd PLUR","locating","3rd PLUR"],[
+      ["those","these"]]),
+  (["ADJ","amount"],[
+   ["entire","whole"]]),
+  (["ADV","NP","locating","abstract"],[
+      ["here","now"]]),
+  (["CONJ","join"],[
+      ["and"]]),
+  (["MOD","negative"],[
+      ["not"]])
+  ]
+
 \end{code}
 
-city_words :: [Phrase]
-city_words = [(["city"], ((+@) "vague" just_place)),
-              (["bakeries"], (+@) "occupants" np),
-              (["pet","cats"], (+@) "occupants" np),
-              (["living"], just_place @/@ ((+@) "vague" just_place)),
-              (["dead"], just_place @/@ ((+@)  "vague" just_place)),
-              (["the"], ((+@) "place" np) @/@ n),
-              (["walks"], (((+@) "simple" ((+@) "travel" s)) @\@ agent)
-               @/@ ((+@) "destination" pp)),
-              (["surrounds"], (((+@) "simple" ((+@) "description" s))
-                               @\@ ((+@) "place" np))
-               @/@ agent),
-              (["mechanically"], (s @\@ agent)
-               @/@ (((+@) "simple" s) @\@ agent)),
-              (["and"], (s @\@ ((+@) "travel" s)) @/@ ((+@) "description" s)),
-              (["with"], (place @\@ just_place) @/@ ((+@) "possession" pp)),
-              (["its"], ((+@) "possession" pp) @/@ ((+@) "occupants" np)),
-              (["into"], ((+@) "destination" pp) @/@ ((+@) "place" np)),
-              (["through"], ((+@) "destination" pp) @/@ ((+@) "place" np)),
-              (["Quinn"], agent)]
+this_ground :: Lexicon
+this_ground = lexicon_from_phrases [
+  ([","],[","]),
+  (["NOTHING"],[""]),
+  (["N","PLUR","place"],["alleys"]),
+  (["Conj","join"],["and"]),
+  (["VT","1ST_P SING","PRES","identity"],["am"]),
+  (["VT","1ST_P PLUR","2ND_P","3RD_P PLUR","PRES","identity"],["are"]),
+  (["N","SING","place"],["city"]),
+  (["N","PLUR","place"],["currents"]),
+  (["ADJ","amount"],["entire"]),
+  (["VT","1ST_P SING", "1ST_P PLUR","2ND_P","3RD_P PLUR","action"],["feel"]),
+  (["NP","N","NON-COUNTABLE","SUBJ","place"],["grass"]),
+  (["VT","1ST_P SING", "1ST_P PLUR","2ND_P","3RD_P PLUR","action"],["hear"]),
+  (["VT","3RD_P SING","action"],["hear"]),
+  (["ADV","NP","locating","abstract"],["here"]),
+  (["NP","1ST_P SING","SUBJ","agent"],["i"]),
+  (["VT","3RD_P SING","PRES","identity"],["is"]),
+  (["N","size"],["length"]),
+  (["N","SING","place"],["maze"]),
+  (["NP","OBJ","1ST_P SING","agent"],["me"]),
+  (["DET","1ST_P SING","possession"],["my"]),
+  (["Mod","negative"],["not"]),
+  (["ADV","NP","Obj","locating","abstract"],["now"]),
+  (["Conj","join"],["or"]),
+  (["VP","3RD_P SING","noise","motion"],["rattles"]),
+  (["N","for PLUR","place","place"],["rooms"]),
+  (["DET","for SING","for PLUR","for ANY","3RD_P SING"],["the"]),
+  (["DET","for SING","locating","3RD_P SING"],["that"]),
+  (["DET","for SING","locating","3RD_P SING"],["this"]),
+  (["ADJ","amount"],["whole"])]
 
-all_words :: [Phrase]
-all_words = some_words ++ other_words ++ more_words ++ city_words
 
+\begin{code}
+
+language_before_art :: Lexicon
+language_before_art = lexicon_from_kinds [
+  (["NP","3RD","SING","SUBJ","OBJ","abstract","simple"],[
+      ["linguistics"]]),
+  (["NP","3RD","SING","NT","SUBJ","OBJ","abstract","simple"],[
+      ["language"],["art"],["philosophy"]]),
+  (["NP","OBJ","1ST PLUR","agent"],[
+      ["us"]]),
+  (["DET","SING","PLUR"],[
+      ["the"]]),
+  (["P","relation"],[
+      ["of"]]),
+  (["P","topic"],[
+      ["about"]]),
+  (["CONJ","identifying"],[
+      ["that"]]),
+  (["VT","1ST PLUR","2ND","3RD PLUR","action","communication"],[
+      ["tell"]]),
+  (["VT","3RD SING","action","negative","O"],[
+      ["ignores"]]),
+  (["VT","3RD SING","AUX"],[
+      ["does"]]),
+  (["ADV","negative","relation"],[
+      ["not"]]),
+  (["Q","identify","CONJ","explaining"],[
+      ["what"]]),
+  (["S"],[
+      ["what","does","art","tell","us","about","the","philosophy","of","language","that","philosophy","does","not"],
+      ["what","does","art","tell","us","that","linguistics","ignores"]])
+  ]
+
+linguistic_contaminants :: Set (Set String, Phrase)
+linguistic_contaminants = Set.fromList [
+  (Set.fromList ["NP","3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+      ["dance"]),
+  (Set.fromList ["NP","3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+      ["death"]),
+  (Set.fromList ["3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+      ["detritus"]),
+  (Set.fromList ["3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+   ["disturbance"]),
+  (Set.fromList ["CONJ","variation"],
+      ["and"]),
+  (Set.fromList ["VT","1ST PLUR","2ND","3RD SING","action","communication"],
+      ["tells"]),
+  (Set.fromList ["VT","1ST PLUR","2ND","3RD PLUR","action","communication"],
+      ["show"]),
+  (Set.fromList ["VT","1ST PLUR","2ND","3RD SING","action","communication"],
+      ["shows"]),
+  (Set.fromList ["NT","abstract"], ["penumbra"]),
+  (Set.fromList ["NP","3RD","SUBJ","PLUR","agent"], ["they"]),
+  (Set.fromList ["NP","3RD","SUBJ","SING","agent"], ["she"]),
+  (Set.fromList ["NP","3RD","SUBJ","SING","agent"], ["he"]),
+  (Set.fromList ["NP","3RD","OBJ","PLUR","agent"], ["them"]),
+  (Set.fromList ["NP","3RD","OBJ","SING","SING","agent"], ["her"]),
+  (Set.fromList ["NP","3RD","OBJ","SING","SING","agent"], ["him"]),
+  (Set.fromList ["Q","explain"],
+      ["how"])
+  ]
+
+linguistic_parasites :: Set (Set String, Phrase)
+linguistic_parasites = Set.fromList [
+  (Set.fromList ["NP","3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+      ["jello"]),
+  (Set.fromList ["3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+      ["hound"]),
+  (Set.fromList ["NP","3RD","SING","NT","SUBJ","OBJ","abstract","simple"],
+      ["bowels"]),
+  (Set.fromList ["NP","3RD","OBJ","SING","SING","agent"], ["it"]),
+  (Set.fromList ["VT","3RD SING","action","negative","O"],
+      ["spills"]),
+  (Set.fromList ["VP","3RD SING","action"],["cowers"]),
+  (Set.fromList ["NP","3RD","OBJ","SUBJ","SING","agent"], ["Ed Ruscha"]),
+  (Set.fromList ["VP","3RD PLUR","action"],["shush"])
+  ]
+
+\end{code}
