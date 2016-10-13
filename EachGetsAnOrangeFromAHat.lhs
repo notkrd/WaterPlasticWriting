@@ -67,68 +67,44 @@ rewrite_with_l_writer l_writer a_phrase = rewritten_start ++ rewritten_rest
 l_game :: LWriter -> LanguageGame
 l_game l_writer = (\a_phrase -> return (rewrite_with_l_writer l_writer a_phrase))
 
--- Updates lexicon with an L-System. The L-System here should preserve grammatical categories. 
-l_write_on_lexicon :: LWriter -> State InAWorld ()
+-- Updates lexicon with an L-System. The L-System here should preserve grammatical categories. Gets VERY big VERY fast
+l_write_on_lexicon :: LWriter -> State InAWorld () 
 l_write_on_lexicon an_l_writer = do
   current_lexicon <- get_lexicon
   let l_rewritten_lex = Map.map (Set.map (rewrite_with_l_writer an_l_writer)) current_lexicon
   let updated_lex = Map.unionWith Set.union current_lexicon l_rewritten_lex
   change_lexicon updated_lex
 
+-- Updates a category in a lexicon by using an L-System.
+l_write_on_cat :: String -> LWriter -> State InAWorld ()
+l_write_on_cat a_cat an_l_writer = the_lexicon_of_a_cat >>= rewrite_cat >>= update_the_lex
+  where
+    rewrite_cat = return . Set.map (rewrite_with_l_writer an_l_writer)
+    the_lexicon_of_a_cat = lexicon_ofW a_cat
+    update_the_lex = \some_lex -> update_lexicon_cat a_cat some_lex
+
+
 -- A language game where we alternate syntactic generation of sentences with Lindenmeyer modification
 l_against_syntax :: LWriter -> LanguageGame
-l_against_syntax an_l_writer = \current_text -> do
+l_against_syntax an_l_writer = \some_text -> do
   l_write_on_lexicon an_l_writer
-  possible_sentence <- make_phrase_of_cats (Set.singleton "L")
-  case possible_sentence of
-    Nothing -> return current_text
-    Just a_sentence ->
-      return current_text >>= say_phrase ("\n" : a_sentence ++ ["\n"]) >>= add_with_language_game (l_game an_l_writer) 
+  give_chance say_new_sentence some_text
 
 \end{code}
 
 \begin{code}
 --Several example L-system texts:
 
-ground_world :: InAWorld
-ground_world = (this_ground, mkStdGen 1071117114, Set.empty, wrong_sidewalks)
-
 now_grass_alleys :: Phrase
 now_grass_alleys = ["now","grass","alleys"]
-
-this_ground :: Lexicon
-this_ground = lexicon_from_phrases [
-  (["NOTHING"],[""]),
-  (["N","plural","setting"],["alleys"]),
-  (["Conj","join"],["and"]),
-  (["NP","N","NON-COUNTABLE","setting"],["grass"]),
-  (["VT","1ST_P SING", "1ST_P PLUR","2ND_P","3RD_P PLURAL"],["hear"]),
-  (["Adv","NP","locating","abstract"],["here"]),
-  (["NP","1ST_P SING","agent","subject"],["i"]),
-  (["VT","3RD_P","SINGULAR","existence","present"],["is"]),
-  (["NP","agent","object","1ST_P"],["me"]),
-  (["Det","1ST_P SING","possession"],["my"]),
-  (["Mod","negative"],["not"]),
-  (["Adv","NP","locating","abstract"],["now"]),
-  (["Conj","join"],["or"]),
-  (["VP","3RD_P","noise","motion"],["rattles"]),
-  (["Det"],["the"]),
-  (["Det","locating"],["this"]),
-  (["VT","1ST_P PLUR","2ND_P","3RD_P PLURAL","existence","present"],["are"])]
 
 an_idea_of_veining :: LWriter
 an_idea_of_veining = [(["now"],["here"]),
                      (["here"],["on","this","ground"]),
-                     (["and"],["or"])]
-
-wrong_sidewalks :: YourGrammar
-wrong_sidewalks = grammar_from_lists [
-      (["NP","setting"],["Det"],["N","setting"]), -- "the grass"
-      (["S\\S","parallel"],["Conj","join"],["S"]),
-      (["S"],["NP"],["VP"]),
-      (["L","description"],["S","description"],["NOTHING"]), -- "the grass is not here"
-      (["L","locating"],["Adv","locating"],["NP"]) -- "Now grass alleys"
-      ]
+                     (["and"],["or"]),
+                     (["i","feel"],["and","now","i","feel"]),
+                     (["my","heat"],["the","whole","length","of","my","heat"]),
+                     (["this","body"],["the","currents","and","the","rooms"])]
 
 lang_starts :: Phrase
 lang_starts = ["language","starts"]
