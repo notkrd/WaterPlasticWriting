@@ -35,6 +35,7 @@ module FingeringADoor where
 import WhileLettingSomethingBeMadeTheSameAsSomethingSimple
 import ISendAWarmThingBySpoonOverASlowOne
 import EachGetsAnOrangeFromAHat
+import GoingAboutAndComingAcrossArt
 
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -53,7 +54,7 @@ import SayingThingsAsAnEngineWould
 
 --Convert a phrase into a string, putting a space between words
 phrase_string :: Phrase -> String 
-phrase_string a_phrase = intercalate " " a_phrase
+phrase_string a_phrase = ' ' : (intercalate " " a_phrase)
 
 \end{code}
 
@@ -74,7 +75,7 @@ h_print_of_kind :: Handle -> String -> Lexicon -> IO ()
 h_print_of_kind a_handle a_kind a_lex = h_print_phrases a_handle the_sentences where
   the_sentences = Set.toList (lexicon_of a_kind a_lex)
 
---Prints to a handle all sentences in a lexicon
+--Prints to a handle all lines in a lexicon
 h_print_sentences :: Handle -> Lexicon -> IO () 
 h_print_sentences some_handle = h_print_of_kind some_handle "S"
 
@@ -98,6 +99,10 @@ h_compare_worlds h world_a world_b = do
   hPutStrLn h "Only in 2nd world:"
   hPrint h (Map.differenceWith compare_sets lexicon_b lexicon_a)
   hPrint h (Set.difference grammar_b grammar_a)
+
+h_play_game :: Handle -> LanguageGame -> Phrase -> InAWorld -> IO ()
+h_play_game h a_game a_start a_world = do
+  hPutStrLn h (phrase_string (evalState (a_game a_start) a_world))
 
 h_repeat_game :: Handle -> Int -> LanguageGame -> Phrase -> InAWorld -> IO () -- Returns the nth result of a language game
 h_repeat_game h n a_game start_phrase some_world = h_print_phrase a_final_phrase where
@@ -140,15 +145,23 @@ over_many_games = h_over_many_games stdout
 repeat_game :: Int -> LanguageGame -> Phrase -> InAWorld -> IO ()
 repeat_game = h_repeat_game stdout
 
+play_game :: LanguageGame -> Phrase -> InAWorld -> IO ()
+play_game = h_play_game stdout
+  
 show_game :: LanguageGame -> InAWorld -> IO ()
-show_game a_game a_world = repeat_game 1 a_game [] a_world
+show_game a_game a_world = play_game a_game [] a_world
 
 \end{code}
 
 \begin{code}
 
+-- Writes 10 generations of some L-System from some starting phrase
+l_stuff :: LWriter -> Phrase -> IO ()
+l_stuff some_l some_start = over_many_games 10 (l_game some_l) some_start empty_world
+
+
 lang_stuff :: IO () -- Writes 10 generations of the L-System words_make_words in the module EachGetsAnOrangeFromAHat
-lang_stuff = over_many_games 10 (l_game words_make_words) lang_starts empty_world
+lang_stuff = l_stuff words_make_words lang_starts
 
 sentence_stuff :: IO () -- Another example from EachGetsAnOrangeFromAHat
 sentence_stuff = over_many_games 7 (l_game sentence_grows) sentence_starts empty_world
@@ -156,7 +169,4 @@ sentence_stuff = over_many_games 7 (l_game sentence_grows) sentence_starts empty
 world_sentences :: InAWorld -> IO ()
 world_sentences some_world = repeat_game 20 (give_chance say_new_sentence) [] some_world
 
-\end{code}
-
-\begin{code}
 \end{code}

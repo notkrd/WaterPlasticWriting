@@ -13,6 +13,7 @@ module EachGetsAnOrangeFromAHat where
 import SayingThingsAsAnEngineWould
 import WhileLettingSomethingBeMadeTheSameAsSomethingSimple
 import ISendAWarmThingBySpoonOverASlowOne
+import GoingAboutAndComingAcrossArt
 
 import Data.List
 import Data.Map (Map)
@@ -65,7 +66,12 @@ rewrite_with_l_writer l_writer a_phrase = rewritten_start ++ rewritten_rest
 
 -- Gives the language game corresponding to a given l_writer. Note that it does /not/ bother at all with lexicons - if you want your L-System to be integrated with the grammar, you will have to deal with that manually
 l_game :: LWriter -> LanguageGame
-l_game l_writer = (\a_phrase -> return (rewrite_with_l_writer l_writer a_phrase))
+l_game an_l_writer = (\a_phrase -> return (rewrite_with_l_writer an_l_writer a_phrase))
+
+nth_l_game :: Integer -> LWriter -> LanguageGame
+nth_l_game n an_l_writer
+  | n > 0 = \some_start -> l_game an_l_writer some_start >>= nth_l_game (n - 1) an_l_writer
+  | otherwise = return
 
 -- Updates lexicon with an L-System. The L-System here should preserve grammatical categories. Gets VERY big VERY fast
 l_write_on_lexicon :: LWriter -> State InAWorld () 
@@ -92,19 +98,10 @@ l_against_syntax an_l_writer = \some_text -> do
 
 \end{code}
 
+Sometimes it seems like there are more important acts than naming; a horror with no walls.
+
 \begin{code}
 --Several example L-system texts:
-
-now_grass_alleys :: Phrase
-now_grass_alleys = ["now","grass","alleys"]
-
-an_idea_of_veining :: LWriter
-an_idea_of_veining = [(["now"],["here"]),
-                     (["here"],["on","this","ground"]),
-                     (["and"],["or"]),
-                     (["i","feel"],["and","now","i","feel"]),
-                     (["my","heat"],["the","whole","length","of","my","heat"]),
-                     (["this","body"],["the","currents","and","the","rooms"])]
 
 lang_starts :: Phrase
 lang_starts = ["language","starts"]

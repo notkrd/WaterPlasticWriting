@@ -21,6 +21,7 @@ import qualified Data.Set as Set
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map.Lazy as Map
+import Data.Maybe
 
 \end{code}
 
@@ -31,6 +32,7 @@ In poetics, this for me becomes a question about the relationships between preci
 \begin{code}
 --General helper functions:
 
+--just gets a random element from a list
 random_from_list :: [a] -> StdGen -> (Maybe a, StdGen)
 random_from_list [] g = (Nothing, g)
 random_from_list a_list g = (Just (a_list !! random_index), g')
@@ -45,6 +47,7 @@ random_element a_set g
 
 \end{code}
 
+--An efficient way to get a random(ish) element from a set, using its binary tree structure. Unfortunately, this will require updating the version of Haskell i'm running, and am afraid of doing that.
 random_element_fancy :: [Set a] -> StdGen -> (Maybe a, StdGen)
 random_element_fancy [] g = (Nothing, g)
 random_element_fancy (a_first : a_rest)
@@ -66,7 +69,10 @@ random_element_fancy (a_first : a_rest)
 type Flags = Set String 
 
 -- Tracks current state
-type InAWorld = (Lexicon, StdGen, Flags, YourGrammar) 
+type InAWorld = (Lexicon, StdGen, Flags, YourGrammar)
+
+-- A text
+type Utterance = State InAWorld Phrase
 
 -- A world's field for a current Lexicon (phrases used / known in the poem)
 lexicon :: InAWorld -> Lexicon 
@@ -109,64 +115,74 @@ update_grammar r' (l,g,f,r) = (l,g,f,r')
 \end{code}
 
 
-Intending to or not, even intending not to, i find myself taking on this explaining voice: as though I were some kind of professor or new lecturing acquaintance at a party. This register presupposes that the code is some collection of totally clear and precise ideas, and the rest of it just an explanation of those ideas. Then, it's 'literary' in so far as the explanations are codes constructed out of occasionaly imagistic metaphors - but the goal of the language is, still, to produce explanations that precisely parallel the mathematical and algorithmic goings on, yet are more readily parsed and digested by an English-speaking reader.
+Intending to or not, even intending not to, i find myself taking on this explaining voice: as though I were some kind of professor or new lecturing acquaintance at a party. This register presupposes that the code is some collection of totally clear and precise ideas, and the rest of it just an explanation of those ideas. Then, it's 'literary' in so far as the explanations are codes constructed out of occasionaly imagistic metaphors - but the goal of the language is, still, to produce explanations that precisely parallel the mathematical and algorithmic goings on, yet are more readily parsed and digested by you.
 
 I would like some other kind of explanation, that doesn't actualy describe the explained object but still, somehow, sketches its landscape. Sometimes, this is what i imagine fiction or poetry doing: somehow, at the end of the story, you find yourself left, after reading this accumulation of irrelevant noun-phrases and unreal events, with the sense of some way of looking or pattern of meaning-making through which to look at, to speak of some as-yet unspoken pieces of, this world here.
 
 \begin{code}
 -- Code for basic operations on worlds with state:
 
+--Monadically returns active lexicon
 get_lexicon :: State InAWorld Lexicon
 get_lexicon = do
   this_world <- get
   return (lexicon this_world)
 
+--Monadically returns active insight
 get_mysterious_insight :: State InAWorld StdGen
 get_mysterious_insight = do
   this_world <- get
   return (mysterious_insight this_world)
 
+--Monadically determines whether a flag is in use
 flag_is_active :: String -> State InAWorld Bool
 flag_is_active a_flag = do
   (_,_,the_flags,_) <- get
   return (Set.member a_flag the_flags)
 
+--Monadically returns active grammar
 get_your_grammar :: State InAWorld YourGrammar
 get_your_grammar = do
   this_world <- get
   return (your_grammar this_world)
 
+--Sets the monad's lexicon
 change_lexicon :: Lexicon -> State InAWorld ()
 change_lexicon l' = do
   (l,g,f,r) <- get
   put (l',g,f,r)
 
+--Sets the monad's lexicon
 change_grammar :: YourGrammar -> State InAWorld ()
 change_grammar r' = do
   (l,g,f,r) <- get
   put (l,g,f,r')
 
+--Sets the monad's insight
 change_insight :: StdGen -> State InAWorld ()
 change_insight g' = do
   (l,g,f,r) <- get
   put (l,g',f,r)
 
+--Sets the phrases for a given key
 update_lexicon_cat :: String -> Set Phrase -> State InAWorld ()
 update_lexicon_cat some_cat new_entries = get_lexicon >>=
   (\start_lex -> change_lexicon (Map.insert some_cat new_entries start_lex))
 
-lexicon_ofW :: String -> State InAWorld (Set Phrase) -- Lexicon_of on a world's lexicon - returns set of phrases matching a key
+--Monadically returns the phrases for a given key
+lexicon_ofW :: String -> State InAWorld (Set Phrase)
 lexicon_ofW key = do
   a_world <- get
   return (lexicon_of key (lexicon a_world))
 
+--Monadically returns the words in the intersection of various keys
 of_setW :: Set String -> State InAWorld (Set Phrase)
 of_setW some_kinds = do
   this_world <- get
   let this_lexicon = lexicon this_world
   return (of_set some_kinds this_lexicon)
 
--- Uses (and updates) a world's random number generator to pick a random element of a set
+-- Monadically uses (and updates) a world's random number generator to pick a random element of a set
 get_random_element :: Set a -> State InAWorld (Maybe a) 
 get_random_element a_set = do
   current_world <- get
@@ -175,6 +191,7 @@ get_random_element a_set = do
   change_insight g'
   return a_possible_element
 
+--Monadically determines whether a phrase is contained in the intersection of various keys
 phrase_is_of_cats :: Set String -> Phrase -> State InAWorld Bool
 phrase_is_of_cats some_kinds some_phrase = do
   acceptable_phrases <- of_setW some_kinds
@@ -245,6 +262,15 @@ make_phrase_of_cats some_kinds = do
     Nothing -> return Nothing
     Just some_rule -> phrase_of_rule some_rule
 
+-- Finds rules that can't be used
+empty_rules :: State InAWorld [ChomskyRule]
+empty_rules = do
+  all_rules <- get_your_grammar
+  let rules_list = Set.toList all_rules
+  filterM produces_nothing rules_list
+  where
+    produces_nothing = \a_rule -> (liftM isNothing) (phrase_of_rule a_rule)
+
 --Makes a phrase, if possible via a production rule, in /every/ category currently used.
 make_phrase_for_each_rule :: State InAWorld ([Maybe Phrase])
 make_phrase_for_each_rule = do
@@ -252,119 +278,13 @@ make_phrase_for_each_rule = do
   let grammar_list = Set.toList current_grammar
   mapM phrase_of_rule (grammar_list)
 
+--Make phrase for each rule and throw out the output.
 just_make_phrase_for_each_rule :: State InAWorld ()
 just_make_phrase_for_each_rule = make_phrase_for_each_rule >> return ()
 
 \end{code}
 
-\begin{code}
--- Type and functions for language_games, functions that generate and modify text
-
--- The language_game type, for a function that modifies a text using state
-type LanguageGame = Phrase -> State InAWorld Phrase
-
--- A language_game who might fail
-type Poet = Phrase -> State InAWorld (Maybe Phrase)
-
--- Do nothing
-no_game :: LanguageGame
-no_game = return
-
-hidden_game :: State InAWorld () -> LanguageGame
-hidden_game an_action = \a_text -> an_action >> return a_text
-
--- Insert a phrase, leave the lexicon alone
-say_phrase :: Phrase -> LanguageGame
-say_phrase something = \poem -> return (poem ++ something)
-
--- Insert a phrase on a new line
-say_line :: Phrase -> LanguageGame
-say_line something = \poem -> return (poem ++ ("\n" : something))
-
-say_lines :: [Phrase] -> LanguageGame
-say_lines [] = \a_text -> return a_text
-say_lines (first_line : other_lines) = \a_text ->
-  say_line first_line a_text >>= say_lines other_lines
-
--- Prints all phrases of kinds
-say_of_kinds :: Set String -> LanguageGame
-say_of_kinds some_kinds = \a_text ->
-  of_setW some_kinds >>= \some_things -> say_lines (Set.toList some_things) a_text
-
--- Add a phrase to a text and insert it into the lexicon, if it isn't already present
-add_phrase :: String -> Phrase -> LanguageGame 
-add_phrase a_key something = \poem -> do
-    learn_phrase a_key something
-    return (poem ++ something)
-
-play_n_games :: Int -> LanguageGame -> LanguageGame
-play_n_games n a_game
- | n == 0 = no_game
- | n > 0 = \a_phrase -> foldl' (\partial_result _ -> partial_result >>= a_game) (return a_phrase) [1 .. n]
- | otherwise = no_game
-
--- Applies an unreliable poet, or on failure, returns what is passed on (though potentially altering state in their attempt)
-give_chance :: Poet -> LanguageGame
-give_chance some_language_game = \start_phrase -> do
-  their_attempt <- some_language_game start_phrase
-  case their_attempt of
-    Nothing -> return start_phrase
-    Just some_creation -> return some_creation
-
-keep_trying :: Poet -> LanguageGame -- Keep attempting a poet until it works. Great risk of looping
-keep_trying some_poet = \some_start -> do
-  their_attempt <- some_poet some_start
-  case their_attempt of
-    Nothing -> keep_trying some_poet some_start
-    Just some_success -> return some_success
-
--- The language_game that adds the contribution of another language_game to the end of a text
-add_with_language_game :: LanguageGame -> LanguageGame
-add_with_language_game some_language_game = \current_text -> do
-  phrase_of_game <- some_language_game current_text
-  say_phrase phrase_of_game current_text
-
--- Attempts to add an unreliable poet's contribution to a text
-try_to_use :: Poet -> LanguageGame
-try_to_use some_poet = \current_text -> do
-  their_attempt <- some_poet current_text
-  case their_attempt of
-    Nothing -> return current_text
-    Just some_creation -> say_line some_creation current_text
-
-phrase_maker :: LanguageGame
-phrase_maker any_phrase = make_phrase_for_each_rule >> return any_phrase
-
-poet_of_cats :: Set String -> Poet
-poet_of_cats some_kinds = \_ -> make_phrase_of_cats some_kinds
-
-poet_of_sentences :: Poet
-poet_of_sentences = \a_text -> phrase_maker a_text >>=
-                               (poet_of_cats (Set.singleton "S"))
-
-say_new_sentence :: Poet --Performance seems really terrible
-say_new_sentence some_start = do
-  potential_sentence <- poet_of_sentences some_start
-  case potential_sentence of
-    Nothing -> return Nothing
-    Just some_sentence -> do
-      sentence_used <- phrase_is_of_cats (Set.singleton "USED") some_sentence
-      if sentence_used
-         then return Nothing
-         else do
-                learn_phrase "USED" some_sentence
-                return (Just (some_start ++ ("\n" : some_sentence)))
-
-say_sentence :: Poet --Performance seems terrible
-say_sentence some_start = do
-  potential_sentence <- poet_of_sentences some_start
-  case potential_sentence of
-    Nothing -> return Nothing
-    Just some_sentence -> return (Just (some_start ++ ("\n" : some_sentence)))
-
-\end{code}
-
-And in this which of all possible worlds (the linguist quantifies over; "in all possible worlds the dead dog can't bark")
+And in this which of all possible worlds (which the linguist quantifies over - "in all possible worlds the dead dog can't bark")
 
 \begin{code}
 -- Some examples
@@ -381,68 +301,11 @@ map_world = (map_lexicon, mkStdGen 0, Set.empty, map_grammar)
 city_world :: InAWorld 
 city_world = (city_words, mkStdGen 42, Set.empty, city_grammar)
 
--- Another example world, more intricate
-ground_world :: InAWorld
-ground_world = (this_ground, mkStdGen 1729, Set.empty, wrong_sidewalks)
-
 -- Provides indexed worlds with incrementing generators
 many_worlds :: InAWorld -> Int -> InAWorld 
 many_worlds a_world n
   | n == 0 = a_world
   | n > 0 = increment_insight (many_worlds a_world (n - 1))
   | otherwise = a_world
-
-\end{code}
-
-\begin{code}
-
-use_contaminant :: Maybe (Set String, Phrase) -> State InAWorld ()
-use_contaminant Nothing = return ()
-use_contaminant (Just (some_kinds, some_phrase)) = learn_phrase_kinds some_kinds some_phrase
-
-rule_disturbance :: Maybe ChomskyRule -> State InAWorld ()
-rule_disturbance Nothing = return ()
-rule_disturbance (Just some_rule) = learn_rule some_rule
-
-contaminate_from :: Set (Set String, Phrase) -> State InAWorld ()
-contaminate_from some_contaminants = (get_random_element some_contaminants) >>= use_contaminant
-
-disturb_grammar :: YourGrammar -> State InAWorld ()
-disturb_grammar some_rules = (get_random_element some_rules) >>= rule_disturbance
-
--- Response for aDLA week 2 Fall 2016
-art_language_ignore  :: InAWorld
-art_language_ignore = (language_before_art, mkStdGen 202, Set.empty, linguistic_arts)
-
-contaminate_say :: Set (Set String, Phrase) -> LanguageGame
-contaminate_say some_contaminants = \a_text ->
-  hidden_game (contaminate_from some_contaminants) a_text >>=
-  give_chance say_new_sentence
-
-tell_us_now :: LanguageGame
-tell_us_now = \a_text ->
-  say_of_kinds (Set.singleton "S") a_text >>=
-  say_phrase ["\n"] >>=
-  hidden_game update_lexicon_grammatically >>=
-  play_n_games 10 (give_chance say_new_sentence) >>=
-  say_phrase ["\n"] >>=
-  play_n_games 10 (contaminate_say linguistic_contaminants) >>=
-  say_phrase ["\n"] >>=
-  hidden_game update_lexicon_grammatically >>=
-  play_n_games 25 (\sub_text ->
-                    hidden_game (contaminate_from linguistic_contaminants) sub_text >>=
-                    hidden_game (disturb_grammar other_linguistics)  >>=
-                    hidden_game just_make_phrase_for_each_rule) >>=
-  say_phrase ["\n"] >>=
-  play_n_games 10 (contaminate_say linguistic_parasites) >>=
-  play_n_games 25 (hidden_game just_make_phrase_for_each_rule) >>=
-  say_phrase ["\n"] >>=
-  play_n_games 15 (contaminate_say linguistic_parasites) >>=
-  say_phrase ["\n"] >>=
-  play_n_games 25 (\sub_text ->
-                    hidden_game (contaminate_from linguistic_contaminants) sub_text >>=
-                    hidden_game (disturb_grammar other_linguistics)  >>=
-                    hidden_game just_make_phrase_for_each_rule) >>=
-  play_n_games 25 (give_chance say_new_sentence)
 
 \end{code}

@@ -1,29 +1,47 @@
 
 
 \begin{code}
+--A module around grouping and regrouping a text in various ways. A conscious influence is what Douglas Hofstadter & his research group call "fluidly regroupable heirarchical structures"
 
 module PuttingAStoryBetweenMuchRailing where
+
+import WhileLettingSomethingBeMadeTheSameAsSomethingSimple
+import ISendAWarmThingBySpoonOverASlowOne
+import SayingThingsAsAnEngineWould
+import GoingAboutAndComingAcrossArt
+
+import Control.Monad
+import Control.Monad.State.Lazy
+import System.Random
+import Data.Set (Set)
+import qualified Data.Set as Set
+import Data.List
+import Data.Map (Map)
+import qualified Data.Map.Lazy as Map
+import Data.Maybe
+import Data.Tree
+import Data.Traversable as Traversable
 
 \end{code}
 
 \begin{code}
+--We are interested in various ways of parsing a text: how to break down a poem into various some parts. Some ways of doing this are fairly natural: for example syntactically parsing the sentence "the red cat chased Dick" into the diagram '((DET["the"])/NP\(ADJ["red"]/N\N["cat"))/S\(VT["chased"]/VP\NP["Dick"])'. The classic way of representing such a parsing is as a tree: a series of branchings, into multiple sub-trees. We will use Haskell's Data.Tree library to do this: note that these means these trees may have many or no sub-trees (and the point of these trees is not to increase efficiency but to describe different ways to split a poem into various kinds of units)
+type PhraseTree = Tree Phrase
 
-data CFGrammar = ([(String, String)],([String, String, String]), String)
--- a list of production rules in Chomsky normal form: NT -> T, NT -> NT NT, Start
--- there are no checks that the grammar is valid
--- so don't fuck up!
+type WordsBranching = State InAWorld PhraseTree
+type Grouping = Phrase -> WordsBranching --Monadic function taking a phrase to a tree
+type Gardening = PhraseTree -> WordsBranching --Monadic function changing a tree
 
-cfg_terminals :: CFGrammar -> [String]
-cfg_terminals some_grammar = nub (map snd (fst some_grammar))
+--over_nodes :: LanguageGame -> PhraseTree -> WordsBranching
+--over_nodes a_game (a_phrase :: Phrase) = a_game a_phrase
+--over_nodes a_game (some_forest :: Forest Phrase) = map a_game some_forest
 
-prescriptive_syntax :: CFGrammar
-prescriptive_syntax = ([("NP","she"),("V","fish"),("V","fork"),
-                        ("V","eats"),("VP","eats"),
-                        ("P","with"),("Det","a")],
--- Gonna have to pull the terminal stuff from wherever we end up keeping a dictionary
-                       [("S", "NP", "VP"),
-                        ("VP", "V", "NP"), ("NP", "Det", "N")],
-                       "S")
+as_grouping :: LanguageGame -> Grouping
+as_grouping some_game = \some_phrase ->
+  some_game some_phrase >>= (return . (return :: Phrase -> Tree Phrase))
 
+--game_on_tree :: LanguageGame -> Gardening
+--game_on_tree some_game = \some_tree ->
+--  over_nodes some_game some_tree
 
 \end{code}
