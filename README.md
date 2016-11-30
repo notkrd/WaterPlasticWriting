@@ -1,6 +1,33 @@
 # WaterPlasticWriting
 . \ / ,, ` begin water climbing / skin folded cut hard / hole light-flotsam | __ . > ‘ , empty paper carries / first marks in/through / cyan ledges of-lines ---; . - , ll ; . side-plastic clear &amp;hard / planks over ground / no-human voice hear , .*~ * , \ 
 
+Water Plastic Writing - A Collection of Language Games
+
+
+Water Plastic Writing presents a collection of texts mediated by an eclectic variety of algorithmic methods for generating and manipulating digital text. It is interested in exploring particular conditions under which specific constrained systems of language becomes interesting. The project contains algorithmic libraries for and texts written using personal dictionaries, context free grammars, Lindenmayer system rewriting rules, literary templates, counts, what Douglas Hofstadter called “fluidly regroupable hierarchical structures,” and other techniques. 
+
+
+Water Plastic Writing builds from scratch and presents the code for these “LanguageGame”s, rather than relying on external corpora or code libraries. The programming is done in the functional programming language Haskell: these technical decisions are made to make visible (though not decoded) the structures and instruments that determine the various texts generated here, and more broadly to problematize contemporary paradigms around the algorithmic use and study of linguistic and literary structure in natural language processing and the digital humanities. The texts encourage active and mixed methods modes of reading. Quotation and prose writing in comments to the code offer other directions into or out from Water Plastic Writing.
+
+
+Water Plastic Writing does not put forward a new technique or concept, but presents a complex and idiosyncratic way of working aesthetically with both computational / mathematical structures and literary / artistic ones simultaneously and interleaved. It thereby offers a model of and a challenge for coding practices that are concerned with language as a multiplicity.
+
+
+References:
+
+
+Brotchie, Alastair. Oulipo compendium. Ed. Harry Mathews. London: Atlas Press, 2005.
+Chomsky, Noam. Syntactic structures. Walter de Gruyter, 2002.
+Hofstadter, Douglas R. Fluid concepts and creative analogies: Computer models of the fundamental mechanisms of thought. Basic books, 2008.
+Hudak, Paul. The Haskell school of expression: learning functional programming through multimedia. Cambridge University Press, 2000.
+Mac Low, Jackson. The Pronouns: A Collection of Forty Dances for the Dancers, 3 February-22 March 1964. Station Hill Press, 1979.
+Prusinkiewicz, Przemyslaw, and Aristid Lindenmayer. The algorithmic beauty of plants. Springer Science & Business Media, 2012.
+Stein, Gertrude. Tender Buttons. Project Gutenberg Ebook, 1914..
+Wittgenstein, Ludwig. Philosophical investigations. John Wiley & Sons, 2010
+
+
+
+
 Sample Poem:
 
 >show_game now_grass_alleys ground_world
@@ -42,6 +69,13 @@ this   body are not you or i explain that
 my dirt imitates some currents and
 my   lungs sing :
 the resistant creature 
+
+
+
+
+
+
+
 
 
 The Project Gutenberg EBook of Tender Buttons, by Gertrude Stein
