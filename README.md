@@ -1,6 +1,48 @@
 # WaterPlasticWriting
 . \ / ,, ` begin water climbing / skin folded cut hard / hole light-flotsam | __ . > ‘ , empty paper carries / first marks in/through / cyan ledges of-lines ---; . - , ll ; . side-plastic clear &amp;hard / planks over ground / no-human voice hear , .*~ * , \ 
 
+Sample Poem:
+
+>show_game now_grass_alleys ground_world
+
+now grass alleys
+here , the stuttering of these loud corridors
+
+a room imitates a maze  
+here those coarse teeth
+these resistant alleys are not you  you are a maze  
+i am a maze  
+
+here , the stuttering of these loud corridors
+on this ground , the murmuration of these loud corridors , unfolding
+
+a room imitates the quiet maze  
+on this ground some long hands
+these loud corridors are not you  i am a maze  
+you are a maze  
+
+the earthworm spills  
+the earthworm describes a door  
+
+these standing lungs sing  
+these standing lungs sing  
+
+i am a maze  
+you are a maze  
+
+these alleys and those alleys are not you and i babble
+these loud corridors or some loud corridors are not you or
+  i explain something wet
+these loud corridors , unfolding or some standing loud corridors ,
+  unfolding are not you or i explain something semi-opaque   
+these loud corridors , unfolding , into this
+  body or some standing obscure corridors , unfolding , into
+this   body are not you or i explain that
+
+my dirt imitates some currents and
+my   lungs sing :
+the resistant creature 
+
 
 The Project Gutenberg EBook of Tender Buttons, by Gertrude Stein
 
