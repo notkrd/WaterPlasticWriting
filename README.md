@@ -2,6 +2,7 @@
 . \ / ,, ` begin water climbing / skin folded cut hard / hole light-flotsam | __ . > ‘ , empty paper carries / first marks in/through / cyan ledges of-lines ---; . - , ll ; . side-plastic clear &amp;hard / planks over ground / no-human voice hear , .*~ * , \ 
 
 Water Plastic Writing - A Collection of Language Games
+------------------------------------------------------
 
 
 Water Plastic Writing presents a collection of texts mediated by an eclectic variety of algorithmic methods for generating and manipulating digital text. It is interested in exploring particular conditions under which specific constrained systems of language becomes interesting. The project contains algorithmic libraries for and texts written using personal dictionaries, context free grammars, Lindenmayer system rewriting rules, literary templates, counts, what Douglas Hofstadter called “fluidly regroupable hierarchical structures,” and other techniques. 
@@ -16,19 +17,20 @@ Water Plastic Writing does not put forward a new technique or concept, but prese
 References:
 
 
-Brotchie, Alastair. Oulipo compendium. Ed. Harry Mathews. London: Atlas Press, 2005.
-Chomsky, Noam. Syntactic structures. Walter de Gruyter, 2002.
-Hofstadter, Douglas R. Fluid concepts and creative analogies: Computer models of the fundamental mechanisms of thought. Basic books, 2008.
-Hudak, Paul. The Haskell school of expression: learning functional programming through multimedia. Cambridge University Press, 2000.
-Mac Low, Jackson. The Pronouns: A Collection of Forty Dances for the Dancers, 3 February-22 March 1964. Station Hill Press, 1979.
-Prusinkiewicz, Przemyslaw, and Aristid Lindenmayer. The algorithmic beauty of plants. Springer Science & Business Media, 2012.
-Stein, Gertrude. Tender Buttons. Project Gutenberg Ebook, 1914..
-Wittgenstein, Ludwig. Philosophical investigations. John Wiley & Sons, 2010
+* Brotchie, Alastair. Oulipo compendium. Ed. Harry Mathews. London: Atlas Press, 2005.
+* Chomsky, Noam. Syntactic structures. Walter de Gruyter, 2002.
+* Hofstadter, Douglas R. Fluid concepts and creative analogies: Computer models of the fundamental mechanisms of thought. Basic books, 2008.
+* Hudak, Paul. The Haskell school of expression: learning functional programming through multimedia. Cambridge University Press, 2000.
+* Mac Low, Jackson. The Pronouns: A Collection of Forty Dances for the Dancers, 3 February-22 March 1964. Station Hill Press, 1979.
+* Prusinkiewicz, Przemyslaw, and Aristid Lindenmayer. The algorithmic beauty of plants. Springer Science & Business Media, 2012.
+* Stein, Gertrude. Tender Buttons. Project Gutenberg Ebook, 1914..
+* Wittgenstein, Ludwig. Philosophical investigations. John Wiley & Sons, 2010
 
 
 
 
 Sample Poem:
+------------
 
 >show_game now_grass_alleys ground_world
 
@@ -79,6 +81,7 @@ the resistant creature 
 
 
 The Project Gutenberg EBook of Tender Buttons, by Gertrude Stein
+----------------------------------------------------------------
 
 This eBook is for the use of anyone anywhere at no cost and with
 almost no restrictions whatsoever.  You may copy it, give it away or
